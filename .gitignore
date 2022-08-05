@@ -136,3 +136,4 @@ dist
 
 # Ignore tempfiles created during testing
 tempFiles/
+config.js
