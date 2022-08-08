@@ -10,9 +10,8 @@ const fs = require('fs')
 // Synchronous execution via promisify.
 const util = require('util')
 // I'll admit, inconvenient naming here.
-const ourUtil = require('./util')
+const { delta, getFileName } = require('./util')
 const execAsync = util.promisify(require('child_process').exec)
-const getFileName = (p) => path.basename(p, path.extname(p))
 
 const modes = {}
 const modesDir = path.join(__dirname, 'modes')
@@ -123,7 +122,7 @@ function parseCommandArguments() {
 				}
 			}
 			if (!argFound) {
-				console.error(`Argument "${arg}" cant be set`)
+				console.error(`Argument "${arg}" can't be set`)
 				return displayUsage()
 			}
 			continue
@@ -140,19 +139,19 @@ function parseCommandArguments() {
 	}
 
 	// not a single positional argument, we need at least 1
-	if (selectedModes === undefined) {
+	if (selectedModes.length === 0) {
 		selectedModes = ['bounce']
-		console.warn(`Mode not selected, using default "${selectedModes[0]}".`)
+		console.warn(`Mode not selected, using default "${selectedModes.join('+')}".`)
 	}
 	// Keyframes mode selected without providing keyframe file
-	if (selectedModes.includes('Keyframes') && (keyFrameFile === undefined || !fs.existsSync(keyFrameFile))) {
+	if (selectedModes.includes('keyframes') && (keyFrameFile === undefined || !fs.existsSync(keyFrameFile))) {
 		if (keyFrameFile) console.error(`Keyframes file not found. "${keyFrameFile}"`)
 		else console.error(`Keyframes file not given.`)
 		return displayUsage()
 	}
 
 	// got 1 positional argument, which was the mode to use - no file path!
-	if (videoPath === undefined) {
+	if (videoPath.length === 0) {
 		console.error('Video file not given.')
 		return displayUsage()
 	}
@@ -205,7 +204,7 @@ function ffmpegErrorHandler(e) {
 	)
 }
 
-async function main() {
+async function main(selectedModes, videoPath, keyFrameFile, bitrate, maxThread, tempo, angle, compressionLevel, outputPath) {
 	// Verify the given path is accessible.
 	if (!videoPath || !fs.existsSync(videoPath)) {
 		if (videoPath) console.error(`Video file not found. "${videoPath}"`)
@@ -219,7 +218,7 @@ async function main() {
 	// Use one call to ffprobe to obtain framerate, width, and height, returned as JSON.
 	console.log(`\
 Input file: ${videoPath}.
-Using minimum w/h ${ourUtil.delta}px.
+Using minimum w/h ${delta}px.
 Extracting necessary input file info...`)
 	const videoInfo = await execAsync(`ffprobe -v error -select_streams v -of json -count_frames -show_entries stream=r_frame_rate,width,height,nb_read_frames "${videoPath}"`, { maxBuffer: 1024 * 1000 * 8 /* 8mb */ })
 	// Deconstructor extracts these values and renames them.
@@ -448,4 +447,4 @@ if (parseCommandArguments() !== true) return
 
 // we're ignoring a promise (the one returned by main) here. this is by design and not harmful, so ignore the warning
 // noinspection JSIgnoredPromiseFromCall
-main()
+main(selectedModes, videoPath, keyFrameFile, bitrate, maxThread, tempo, angle, compressionLevel, outputPath)
